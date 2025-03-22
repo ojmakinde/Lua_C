@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+*.out
+
+*.dbg
+
+parsetab.py
