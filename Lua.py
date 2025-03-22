@@ -55,6 +55,7 @@ class Parser:
     def run(self):
         s = """
 a = 2+2
+b = 3 * 2
         """
         ir = yacc.parse(s)
         AST.render_tree(ir)
@@ -62,7 +63,7 @@ a = 2+2
 
 class Lua(Parser):
     def __init__(self, repl_prompt: str = "Ready >"):
-        super().__init__(debug=1)  # add debug=1 to get .dbg file with grammar
+        super().__init__(debug=0)  # add debug=1 to get .dbg file with grammar
 
     # noinspection SpellCheckingInspection
     tokens = [
@@ -168,7 +169,8 @@ class Lua(Parser):
 
     def p_stmt_list2(self, p):
         """stmt_list : stmt_list statement"""
-        p[0] = AST("stmt_list", children=[p[1], p[2]])
+        p[1].children = list(p[1].children) + [p[2]]
+        p[0] = p[1]
     
     def p_statement_assign(self, p):
         """statement : ID EQUALS expression"""
