@@ -53,24 +53,36 @@ class Parser:
 
     # noinspection PyMethodMayBeStatic
     def run(self):
-        while True:
-            try:
-                s = input('Lua > ')
-            except EOFError:
-                break
-            if not s:
-                continue
-            yacc.parse(s)
+        s = """
+a = 2+2
+        """
+        ir = yacc.parse(s)
+        AST.render_tree(ir)
 
 
-class Calc(Parser):
+class Lua(Parser):
+    def __init__(self, repl_prompt: str = "Ready >"):
+        super().__init__(debug=1)  # add debug=1 to get .dbg file with grammar
 
     # noinspection SpellCheckingInspection
-    tokens = (
-        'NAME', 'NUMBER', 'FLOAT',
+    tokens = [
+        'ID', 'NUMBER', 'FLOAT',
         'PLUS', 'MINUS', 'EXP', 'TIMES', 'DIVIDE', 'EQUALS',
         'LPAREN', 'RPAREN',
-    )
+    ]
+
+    lua_keywords = {
+        "and": "AND", "break": "BREAK", "do": "DO", "else": "ELSE", 
+        "elseif": "ELSEIF", "end": "END", "false": "FALSE", "for": "FOR", 
+        "function": "FUNCTION", "if": "IF", "in": "IN", "local": "LOCAL", 
+        "nil": "NIL", "not": "NOT", "or": "OR", "repeat": "REPEAT", 
+        "return": "RETURN", "then": "THEN", "true": "TRUE", 
+        "until": "UNTIL", "while": "WHILE", "id": "ID"
+    }
+
+    lua_keywords = {}
+
+    tokens += [keyword for keyword in lua_keywords.values()]
 
     # Tokens
 
@@ -84,7 +96,6 @@ class Calc(Parser):
     t_LPAREN = r'\('
     # noinspection SpellCheckingInspection
     t_RPAREN = r'\)'
-    t_NAME = r'[a-zA-Z_][a-zA-Z0-9_]*'
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -106,6 +117,15 @@ class Calc(Parser):
             print("Float value too large %s" % t.value)
             t.value = 0
         # print "parsed number %s" % repr(t.value)
+        return t
+    
+    def t_ID(self, t):
+        r"""[a-zA-Z_][a-zA-Z0-9_]*"""
+        try:
+            # if not keyword, then var ?
+            t.type = self.lua_keywords.get(t.value, 'ID')
+        except ValueError:
+            print("what the hell are you doing")
         return t
 
     t_ignore = " \t"
@@ -129,10 +149,30 @@ class Calc(Parser):
         ('left', 'EXP'),
         ('right', 'UMINUS'),
     )
+
+    def p_program(self, p):
+        """program : opt_stmts"""
+        p[0] = AST("program", children=[p[1]])
+
+    def p_opt_stmts(self, p):
+        """opt_stmts : stmt_list"""
+        p[0] = AST("opt_stmts", children=[p[1]])
+
+    def p_opt_stmts2(self, p):
+        """opt_stmts : """
+        p[0] = AST("nop")
+
+    def p_stmt_list(self, p):
+        """stmt_list : statement"""
+        p[0] = AST("stmt_list", children=[p[1]])
+
+    def p_stmt_list2(self, p):
+        """stmt_list : stmt_list statement"""
+        p[0] = AST("stmt_list", children=[p[1], p[2]])
     
     def p_statement_assign(self, p):
-        """statement : NAME EQUALS expression"""
-        self.names[p[1]] = p[3]
+        """statement : ID EQUALS expression"""
+        p[0] = AST("assignment", value=p[1], children=[p[3]])
 
     # noinspection PyMethodMayBeStatic
     def p_statement_expr(self, p):
@@ -149,17 +189,7 @@ class Calc(Parser):
                   | expression DIVIDE expression
                   | expression EXP expression
         """
-        # print [repr(p[i]) for i in range(0,4)]
-        if p[2] == '+':
-            p[0] = AST("addition", children=[p[1], p[3]])
-        elif p[2] == '-':
-            p[0] = AST("subtraction", children=[p[1], p[3]])
-        elif p[2] == '*':
-            p[0] = AST("multiplication", children=[p[1], p[3]])
-        elif p[2] == '/':
-            p[0] = AST("division", children=[p[1], p[3]])
-        elif p[2] == '**':
-            p[0] = AST("exponentiation", children=[p[1], p[3]])
+        p[0] = AST("binop", value=p[2], children=[p[1], p[3]])
 
     # noinspection PyMethodMayBeStatic
     # noinspection SpellCheckingInspection
@@ -182,8 +212,8 @@ class Calc(Parser):
         """expression : FLOAT"""
         p[0] = AST("float", value=p[1])
 
-    def p_expression_name(self, p):
-        """expression : NAME"""
+    def p_expression_ID(self, p):
+        """expression : ID"""
         try:
             p[0] = self.names[p[1]]
         except LookupError:
@@ -199,5 +229,5 @@ class Calc(Parser):
 
 
 if __name__ == '__main__':
-    calc = Calc()
-    calc.run()
+    lua = Lua()
+    lua.run()
