@@ -67,6 +67,17 @@ b = 3*2
 class Lua(Parser):
     def __init__(self, repl_prompt: str = "Ready >"):
         super().__init__(debug=0)  # add debug=1 to get .dbg file with grammar
+        self.symbol_table = {}
+        self.object_counter = 0
+    
+    def get_obj_ctr(self, label: str) -> str:
+        if label in self.symbol_table:
+            # this error occurs if a parser production attempts to recreate a previously created global_var
+            # solution: test the symbol_table dictionary before calling get_obj_ctr.
+            raise ValueError("Compile Error: value previously allocated in global vars: {}".format(label))
+        out_label = "{}_{:05d}".format(label, self.object_counter)
+        self.object_counter = self.object_counter + 1
+        return out_label
 
     # noinspection SpellCheckingInspection
     tokens = [
@@ -125,12 +136,18 @@ class Lua(Parser):
     
     def t_ID(self, t):
         r"""[a-zA-Z_][a-zA-Z0-9_]*"""
-        try:
             # if not keyword, then var ?
-            t.type = self.lua_keywords.get(t.value, 'ID')
-        except ValueError:
-            print("what the hell are you doing")
+        id = str(t.value)
+        t.type = self.lua_keywords.get(id, 'ID')
+        if t.type == 'ID':
+            if t.value in self.symbol_table:
+                symbol = self.symbol_table[id]
+            else:
+                symbol = self.get_obj_ctr(id)
+                self.symbol_table[id] = symbol
+            t.value = {'id': t.value, 'symbol': symbol}
         return t
+    
 
     t_ignore = " \t"
 

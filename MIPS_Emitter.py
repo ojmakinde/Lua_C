@@ -89,7 +89,7 @@ class Emitter:
                 case "opt_stmts": emit_children(node.children)
                 case "stmt_list": emit_children(node.children)
                 case "nop": return
-                case "asgn":
+                case "assignment":
                         out_asm_text("# assignment to: {}".format(node.value['symbol']))
                         emit_children(node.children)
                         out_asm_text("popw($t7)")  # get the value of the right hand expression from CPU stack
@@ -97,15 +97,15 @@ class Emitter:
                         out_asm_text("sw $t7, 0($t6)")  # put value of rhs into storage location
                         out_asm_text("# end of assignment")
                 # fix this
-                case "writeln":
-                        out_asm_text("#-- writeln node")
-                        emit_children(node.children)
-                        out_asm_text("popw($t7)")
-                        out_asm_text("move $a0, $t7")
-                        out_asm_text("li $v0, 1")
-                        out_asm_text("syscall")
-                        out_asm_text("prt_lf")
-                        out_asm_text("#-- end of writeln node")
+                # case "print":
+                #         out_asm_text("#-- writeln node")
+                #         emit_children(node.children)
+                #         out_asm_text("popw($t7)")
+                #         out_asm_text("move $a0, $t7")
+                #         out_asm_text("li $v0, 1")
+                #         out_asm_text("syscall")
+                #         out_asm_text("prt_lf")
+                #         out_asm_text("#-- end of writeln node")
                 case "number":
                     out_asm_text("#-- number node")
                     out_asm_text("li $t7, {}".format(node.value))
@@ -128,7 +128,8 @@ class Emitter:
                     out_asm_text("pushw($t7)")  # push the value on to the stack
                     out_asm_text("# end of look up ID")
                 case _:
-                    raise SyntaxWarning("Emitter error: AST node unknown: {}".format(node.name))
+                    print(node.name)
+                    # raise SyntaxWarning("Emitter error: AST node unknown: {}".format(node.name))
 
         # generate the assembly code
         emit(self.ast)
