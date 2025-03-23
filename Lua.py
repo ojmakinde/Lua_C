@@ -52,13 +52,16 @@ class Parser:
                   debugfile=self.debug_file)
 
     # noinspection PyMethodMayBeStatic
-    def run(self):
+    def export_ast(self, source: str =None):
         s = """
 a = 2+2
-b = 3 * 2
+b = 3*2
         """
-        ir = yacc.parse(s)
-        AST.render_tree(ir)
+        stream = source if source else s
+        inter_rep = yacc.parse(stream)
+        AST.render_tree(inter_rep)
+        return inter_rep
+
 
 
 class Lua(Parser):
@@ -232,4 +235,4 @@ class Lua(Parser):
 
 if __name__ == '__main__':
     lua = Lua()
-    lua.run()
+    lua.export_ast()
