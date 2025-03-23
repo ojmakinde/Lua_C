@@ -55,7 +55,7 @@ class Parser:
     def export_ast(self, source: str =None):
         s = """
 a = 2+2
-b = 3*2
+print(a)
         """
         stream = source if source else s
         inter_rep = yacc.parse(stream)
@@ -90,12 +90,12 @@ class Lua(Parser):
         "and": "AND", "break": "BREAK", "do": "DO", "else": "ELSE", 
         "elseif": "ELSEIF", "end": "END", "false": "FALSE", "for": "FOR", 
         "function": "FUNCTION", "if": "IF", "in": "IN", "local": "LOCAL", 
-        "nil": "NIL", "not": "NOT", "or": "OR", "repeat": "REPEAT", 
+        "nil": "NIL", "not": "NOT", "or": "OR", "print":"PRINT", "repeat": "REPEAT", 
         "return": "RETURN", "then": "THEN", "true": "TRUE", 
         "until": "UNTIL", "while": "WHILE", "id": "ID"
     }
 
-    lua_keywords = {}
+    lua_keywords = {"print": "PRINT"}
 
     tokens += [keyword for keyword in lua_keywords.values()]
 
@@ -195,11 +195,17 @@ class Lua(Parser):
     def p_statement_assign(self, p):
         """statement : ID EQUALS expression"""
         p[0] = AST("assignment", value=p[1], children=[p[3]])
+        
+    def p_statement_print(self, p):
+        """statement : PRINT LPAREN expression RPAREN """
+        for index, _ in enumerate(p):
+            print(index, _)
+        p[0] = AST("print", value=p[1], children=[p[3]])
 
-    # noinspection PyMethodMayBeStatic
-    def p_statement_expr(self, p):
-        """statement : expression"""
-        AST.render_tree(p[1])
+    # # noinspection PyMethodMayBeStatic
+    # def p_statement_expr(self, p):
+    #     """statement : expression"""
+    #     AST.render_tree(p[1])
 
     # noinspection SpellCheckingInspection
     # noinspection PyMethodMayBeStatic
@@ -234,13 +240,10 @@ class Lua(Parser):
         """expression : FLOAT"""
         p[0] = AST("float", value=p[1])
 
+    # i honestly don't get this?
     def p_expression_ID(self, p):
         """expression : ID"""
-        try:
-            p[0] = self.names[p[1]]
-        except LookupError:
-            print("Undefined name '%s'" % p[1])
-            p[0] = 0
+        p[0] = AST("ID", value=p[1])
 
     # noinspection PyMethodMayBeStatic
     def p_error(self, p):

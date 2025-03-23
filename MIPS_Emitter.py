@@ -96,16 +96,15 @@ class Emitter:
                         out_asm_text("la $t6, {}".format(node.value['symbol']))  # get address of storage location
                         out_asm_text("sw $t7, 0($t6)")  # put value of rhs into storage location
                         out_asm_text("# end of assignment")
-                # fix this
-                # case "print":
-                #         out_asm_text("#-- writeln node")
-                #         emit_children(node.children)
-                #         out_asm_text("popw($t7)")
-                #         out_asm_text("move $a0, $t7")
-                #         out_asm_text("li $v0, 1")
-                #         out_asm_text("syscall")
-                #         out_asm_text("prt_lf")
-                #         out_asm_text("#-- end of writeln node")
+                case "print":
+                        out_asm_text("#-- print node")
+                        emit_children(node.children)
+                        out_asm_text("popw($t7)")
+                        out_asm_text("move $a0, $t7")
+                        out_asm_text("li $v0, 1")
+                        out_asm_text("syscall")
+                        out_asm_text("prt_lf")
+                        out_asm_text("#-- end of print node")
                 case "number":
                     out_asm_text("#-- number node")
                     out_asm_text("li $t7, {}".format(node.value))
