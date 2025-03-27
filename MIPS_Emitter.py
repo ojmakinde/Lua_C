@@ -135,3 +135,8 @@ class Emitter:
 
         # generate the assembly code
         emit(self.ast)
+
+    def export_asm(self):
+        f = open("asm_output.txt", "w")
+        f.write(self.asm_text)
+        f.close()
