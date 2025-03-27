@@ -117,6 +117,9 @@ class Emitter:
                     out_asm_text("popw($t6)")  # gets the left hand side
                     match node.value:
                         case "+": out_asm_text("add $t7, $t6, $t7")  # $t7 = $t6 + $t7
+                        case "-": out_asm_text("sub $t7, $t6, $t7")
+                        case "*": out_asm_text("mulu $t7, $t6, $t7")
+                        case "/": out_asm_text("divu $t7, $t6, $t7")
                     out_asm_text("pushw($t7)")  # put the result of the binop on the CPU stack
                     out_asm_text("# end of binop node")
                 case "ID":

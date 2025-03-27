@@ -54,7 +54,7 @@ class Parser:
     # noinspection PyMethodMayBeStatic
     def export_ast(self, source: str =None):
         s = """
-a = 2+2
+a = 2-2
 print(a)
         """
         stream = source if source else s
