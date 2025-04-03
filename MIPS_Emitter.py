@@ -11,10 +11,14 @@ class Emitter:
         return """
 #  CSC486 Macros in MIPS 32 Assembly
 #
-#  Author: Deanna M. Wilborne
-# Created: 2024-01-28
-# Purpose: Demonstration
-#  Course: 2024 Spring CSC486
+#  Author: Oluwagbayi J. Makinde
+# Created: 2025-03-15
+# Purpose: Implementation of Lua emitter using boilerplate from Prof. Wilborne
+#  Course: 2025 Spring CSC486
+#   
+#   Milestone 1: Completed all binop operations, implemented passing file path as cmd arg
+#                float recognition, and print keyword in Lua (which is print())
+#
 #
 # History:
 #           2024-01-28, DMW, created

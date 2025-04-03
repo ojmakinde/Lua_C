@@ -71,7 +71,7 @@ print(f)
 
 class Lua(Parser):
     def __init__(self, repl_prompt: str = "Ready >"):
-        super().__init__(debug=0)  # add debug=1 to get .dbg file with grammar
+        super().__init__(debug=1)  # add debug=1 to get .dbg file with grammar
         self.symbol_table = {}
         self.object_counter = 0
     
