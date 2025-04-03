@@ -9,4 +9,6 @@ __pycache__/
 
 *.txt
 
+*.jar
+
 parsetab.py

@@ -54,8 +54,13 @@ class Parser:
     # noinspection PyMethodMayBeStatic
     def export_ast(self, source: str =None):
         s = """
-a = 2-2
-print(a)
+a = 5
+b = 3
+c = a + b
+d = 96
+e = c + d
+f = (e + -2) / 13
+print(f)
         """
         stream = source if source else s
         inter_rep = yacc.parse(stream)
@@ -223,7 +228,7 @@ class Lua(Parser):
     # noinspection SpellCheckingInspection
     def p_expression_uminus(self, p):
         """expression : MINUS expression %prec UMINUS"""
-        p[0] = AST("number", value=-p[2])
+        p[0] = AST("unary", value="UMINUS", children=[p[2]])
 
     # noinspection SpellCheckingInspection
     # noinspection PyMethodMayBeStatic

@@ -89,6 +89,10 @@ class Emitter:
                 case "opt_stmts": emit_children(node.children)
                 case "stmt_list": emit_children(node.children)
                 case "nop": return
+                case "parentheses":
+                    out_asm_text("# parentheses node")
+                    emit_children(node.children)
+                    out_asm_text("# end of parentheses node")
                 case "assignment":
                         out_asm_text("# assignment to: {}".format(node.value['symbol']))
                         emit_children(node.children)
@@ -110,6 +114,14 @@ class Emitter:
                     out_asm_text("li $t7, {}".format(node.value))
                     out_asm_text("pushw($t7)")
                     out_asm_text("#-- end of number node")
+                case "unary":
+                    out_asm_text("# unary node: {}".format(node.value))
+                    emit_children(node.children)
+                    out_asm_text("popw($t7)")
+                    out_asm_text("neg $t7, $t7")
+                    # should i catch the case where you have like -abc?
+                    out_asm_text("pushw($t7)") 
+                    out_asm_text("# end of unary node")
                 case "binop":
                     out_asm_text("# binop node: {}".format(node.value))
                     emit_children(node.children)  # should leave two values on the CPU stack
