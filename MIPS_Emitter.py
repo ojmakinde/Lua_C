@@ -36,8 +36,8 @@ class Emitter:
 #                float recognition, and print keyword in Lua (which is print())
 #
 #   Milestone 2: Implemented string printing.
-#
-#
+#               - Added the string counter
+#               - Improved the functionality of the print case for outputting asm
 # History:
 #           2024-01-28, DMW, created
 

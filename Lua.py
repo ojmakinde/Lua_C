@@ -209,8 +209,6 @@ class Lua(Parser):
         
     def p_statement_print(self, p):
         """statement : PRINT LPAREN expression RPAREN """
-        for index, _ in enumerate(p):
-            print(index, _)
         p[0] = AST("print", value=p[1], children=[p[3]])
 
     # # noinspection PyMethodMayBeStatic
