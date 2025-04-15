@@ -4,8 +4,24 @@ class Emitter:
     def __init__(self, ast, symbol_table=None) -> None:
         self.ast = ast
         self.symbol_table = symbol_table
-        self.asm_text = ""
+        self.string_counter = 0  # Counter for unique string labels
+        self.string_literals = {} 
+        self.asm_data_section = ".data\n"
+        self.asm_text_section = ""
         self.emit_ast()
+
+    def get_string_symbol(self, string_value):
+        """Get or create a symbol table entry for a string literal"""
+        # Check if this string already exists
+        if string_value in self.string_literals:
+            return self.string_literals[string_value]
+        
+        # Create a new symbol for this string
+        symbol = f"str_{self.string_counter}"
+        self.string_counter += 1
+        self.string_literals[string_value] = symbol
+        
+        return symbol
 
     def mips32_macros(self):
         return """
@@ -18,6 +34,8 @@ class Emitter:
 #   
 #   Milestone 1: Completed all binop operations, implemented passing file path as cmd arg
 #                float recognition, and print keyword in Lua (which is print())
+#
+#   Milestone 2: Implemented string printing.
 #
 #
 # History:
@@ -56,33 +74,45 @@ class Emitter:
            .end_macro"""
 
     def emit_ast(self) -> None:
-        obj_ctr = 0
-
-        def get_obj_ctr(label) -> str:
-            global obj_ctr
-            numbered_object = "{}_{:05d}".format(label, obj_ctr)
-            obj_ctr = obj_ctr + 1
-            return numbered_object
 
         def emit_children(children: []) -> None:
             for child in children:
                 emit(child)
 
+        def out_asm_data(line:str = None) -> None:
+            if line is not None:
+                self.asm_data_section += f"{line} \n"
+
         def out_asm_text(line: str = None) -> None:
             if line is not None:
-                self.asm_text = self.asm_text + line + "\n"
+                self.asm_text_section += f"{line} \n"
 
         def hr() -> None:
             out_asm_text(" # -------------------------------------------------------------------------------------")
+
+        def print_lf() -> None:
+            out_asm_text("li $v0, 11")  # print character syscall number
+            out_asm_text("li $a0, 10")  # linefeed character
+            out_asm_text("syscall")
+
+        def store_string(data_label: str, out_str: str) -> None:
+            if '"' in out_str:
+                # if true, write out string as bytes when it has nested " characters
+                out_bytes = ""
+                for ch in out_str:
+                    out_bytes = out_bytes + str(ord(ch)) + " "
+                out_bytes = out_bytes + "0 # " + out_str
+                out_asm_data(data_label + ": .byte " + out_bytes)
+            else:
+                out_asm_data(data_label + ": .asciiz \"" + out_str + '"')
 
         def emit(node: AST) -> None:
             match node.name:
                 case "program":
                     out_asm_text("# program node")
                     if len(self.symbol_table) > 0:
-                        out_asm_text(".data")
                         for symbol in self.symbol_table:
-                            out_asm_text("{}: .word 0".format(self.symbol_table[symbol]))
+                            out_asm_data("{}: .word 0".format(self.symbol_table[symbol]))
                         hr()
                     out_asm_text(".text")
                     out_asm_text(self.mips32_macros())
@@ -98,21 +128,41 @@ class Emitter:
                     emit_children(node.children)
                     out_asm_text("# end of parentheses node")
                 case "assignment":
-                        out_asm_text("# assignment to: {}".format(node.value['symbol']))
-                        emit_children(node.children)
-                        out_asm_text("popw($t7)")  # get the value of the right hand expression from CPU stack
-                        out_asm_text("la $t6, {}".format(node.value['symbol']))  # get address of storage location
-                        out_asm_text("sw $t7, 0($t6)")  # put value of rhs into storage location
-                        out_asm_text("# end of assignment")
+                    out_asm_text("# assignment to: {}".format(node.value['symbol']))
+                    emit_children(node.children)
+                    out_asm_text("popw($t7)")  # get the value of the right hand expression from CPU stack
+                    out_asm_text("la $t6, {}".format(node.value['symbol']))  # get address of storage location
+                    out_asm_text("sw $t7, 0($t6)")  # put value of rhs into storage location
+                    out_asm_text("# end of assignment")
+                case "string":
+                    out_asm_text("#-- string node")
+                    string_label = self.get_string_symbol(node.value)
+                    store_string(string_label, node.value)
+                    out_asm_text(f"la $t7, {string_label}")
+                    out_asm_text("pushw($t7)")
+                    out_asm_text("#-- end of string node")
                 case "print":
-                        out_asm_text("#-- print node")
-                        emit_children(node.children)
-                        out_asm_text("popw($t7)")
-                        out_asm_text("move $a0, $t7")
+                    out_asm_text("#-- print node")
+                    if not node.children:
+                        out_asm_text("# Warning: print with no argument")
+                        return
+                    emit_children(node.children)
+                    if node.children[0].name == "ID":   # if id, then it could hold any data type
+                        out_asm_text("#-- printing variable and verifying type")
+                        out_asm_text("popw($a0)")
+                        out_asm_text("li $v0, 4")
+                    if node.children[0].name == "string":
+                        out_asm_text("#-- printing string")
+                        out_asm_text("popw($a0)")
+                        out_asm_text("li $v0, 4")
+                    else:
+                        out_asm_text("#-- printing integer")
+                        out_asm_text("popw($a0)") 
                         out_asm_text("li $v0, 1")
-                        out_asm_text("syscall")
-                        out_asm_text("prt_lf")
-                        out_asm_text("#-- end of print node")
+
+                    out_asm_text("syscall")
+                    print_lf()
+                    out_asm_text("#-- end of print node")
                 case "number":
                     out_asm_text("#-- number node")
                     out_asm_text("li $t7, {}".format(node.value))
@@ -154,5 +204,7 @@ class Emitter:
 
     def export_asm(self):
         f = open("asm_output.txt", "w")
-        f.write(self.asm_text)
+        print(self.asm_data_section)
+        print(self.asm_text_section)
+        f.write(self.asm_data_section + "\n" + self.asm_text_section)
         f.close()

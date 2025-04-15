@@ -11,4 +11,6 @@ __pycache__/
 
 *.jar
 
+*.asm
+
 parsetab.py

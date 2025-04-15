@@ -86,7 +86,7 @@ class Lua(Parser):
 
     # noinspection SpellCheckingInspection
     tokens = [
-        'ID', 'NUMBER', 'FLOAT',
+        'ID', 'NUMBER', 'FLOAT', 'STRING',
         'PLUS', 'MINUS', 'EXP', 'TIMES', 'DIVIDE', 'EQUALS',
         'LPAREN', 'RPAREN',
     ]
@@ -119,6 +119,12 @@ class Lua(Parser):
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
+
+    def t_STRING(self, t):
+        r"""\"[^\"]*\"|\'[^\']*\'"""
+        t.value = t.value[1:-1]
+        return t
+    
     def t_NUMBER(self, t):
         r"""(?<![\d.])[0-9]+(?![\d.])"""
         try:
@@ -240,6 +246,10 @@ class Lua(Parser):
     def p_expression_number(self, p):
         """expression : NUMBER"""
         p[0] = AST("number", value=p[1])
+
+    def p_expression_string(self, p):
+        """expression : STRING"""
+        p[0] = AST("string", value=p[1])
 
     def p_expression_float(self, p):
         """expression : FLOAT"""
