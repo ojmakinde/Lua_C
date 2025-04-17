@@ -112,7 +112,8 @@ class Emitter:
                     out_asm_text("# program node")
                     if len(self.symbol_table) > 0:
                         for symbol in self.symbol_table:
-                            out_asm_data("{}: .word 0".format(self.symbol_table[symbol]))
+                            symbol_address = self.symbol_table[symbol]["address"]
+                            out_asm_data(f"{symbol_address}: .word 0")
                         hr()
                     out_asm_text(".text")
                     out_asm_text(self.mips32_macros())
@@ -143,21 +144,26 @@ class Emitter:
                     out_asm_text("#-- end of string node")
                 case "print":
                     out_asm_text("#-- print node")
-                    if not node.children:
-                        out_asm_text("# Warning: print with no argument")
-                        return
-                    emit_children(node.children)
-                    if node.children[0].name == "ID":   # if id, then it could hold any data type
-                        out_asm_text("#-- printing variable and verifying type")
-                        out_asm_text("popw($a0)")
-                        out_asm_text("li $v0, 4")
+                    print_type = ""
                     if node.children[0].name == "string":
+                        print_type = "string"
+                    elif node.children[0].name == "number" or node.children[0].name == "float":
+                        print_type = "number"
+                    elif node.children[0].name == "ID":
+                        # For ID nodes, look up the type in the symbol table
+                        symbol_name = node.children[0].value['id']
+                        if symbol_name in self.symbol_table:
+                            print_type = self.symbol_table[symbol_name]["type"]
+
+                    emit_children(node.children)
+
+                    out_asm_text("popw($a0)")
+
+                    if print_type == "string":
                         out_asm_text("#-- printing string")
-                        out_asm_text("popw($a0)")
                         out_asm_text("li $v0, 4")
                     else:
-                        out_asm_text("#-- printing integer")
-                        out_asm_text("popw($a0)") 
+                        out_asm_text("#-- printing integer/expression")
                         out_asm_text("li $v0, 1")
 
                     out_asm_text("syscall")
@@ -189,11 +195,13 @@ class Emitter:
                     out_asm_text("pushw($t7)")  # put the result of the binop on the CPU stack
                     out_asm_text("# end of binop node")
                 case "ID":
-                    # get the address of the symbol stored in the ID node
-                    out_asm_text("# look up ID: {}".format(node.value['id']))
-                    out_asm_text("la $t7, {}".format(self.symbol_table[node.value['id']]))
-                    out_asm_text("lw $t7, 0($t7)")  # get the value stored at address $t7 into $t7
-                    out_asm_text("pushw($t7)")  # push the value on to the stack
+                    # get the address of the symbol stored in the ID node'
+                    symbol_id = node.value['id']
+                    out_asm_text(f"# look up ID: {symbol_id}")
+                    symbol_address = self.symbol_table[symbol_id]["address"]
+                    out_asm_text(f"la $t7, {symbol_address}")
+                    out_asm_text("lw $t7, 0($t7)")
+                    out_asm_text("pushw($t7)")
                     out_asm_text("# end of look up ID")
                 case _:
                     print(node.name)

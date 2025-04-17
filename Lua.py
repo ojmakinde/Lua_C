@@ -75,14 +75,19 @@ class Lua(Parser):
         self.symbol_table = {}
         self.object_counter = 0
     
-    def get_obj_ctr(self, label: str) -> str:
+    def get_obj_ctr(self, label: str, type_info: str = "unknown") -> dict:
         if label in self.symbol_table:
-            # this error occurs if a parser production attempts to recreate a previously created global_var
-            # solution: test the symbol_table dictionary before calling get_obj_ctr.
             raise ValueError("Compile Error: value previously allocated in global vars: {}".format(label))
-        out_label = "{}_{:05d}".format(label, self.object_counter)
+        address = "{}_{:05d}".format(label, self.object_counter)
         self.object_counter = self.object_counter + 1
-        return out_label
+        
+        symbol_info = {
+            "address": address,
+            "type": type_info,
+            "name": label
+        }
+    
+        return symbol_info
 
     # noinspection SpellCheckingInspection
     tokens = [
@@ -145,20 +150,38 @@ class Lua(Parser):
         # print "parsed number %s" % repr(t.value)
         return t
     
+    # def t_ID(self, t):
+    #     r"""[a-zA-Z_][a-zA-Z0-9_]*"""
+    #         # if not keyword, then var ?
+    #     id = str(t.value)
+    #     t.type = self.lua_keywords.get(id, 'ID')
+    #     if t.type == 'ID':
+    #         if t.value in self.symbol_table:
+    #             symbol_info = self.symbol_table[id]
+    #             t.value = {'id': t.value, 'symbol': symbol_info["address"], 'type': symbol_info["type"]}
+    #         else:
+    #             symbol = self.get_obj_ctr(id)
+    #             self.symbol_table[id] = symbol
+    #             t.value = {'id': t.value, 'symbol': symbol_info["address"], 'type': 'unknown'}
+    #     return t
+    
+
     def t_ID(self, t):
         r"""[a-zA-Z_][a-zA-Z0-9_]*"""
-            # if not keyword, then var ?
+    # if not keyword, then var ?
         id = str(t.value)
         t.type = self.lua_keywords.get(id, 'ID')
         if t.type == 'ID':
-            if t.value in self.symbol_table:
-                symbol = self.symbol_table[id]
+            if id in self.symbol_table:  # Note: Use id here, not t.value
+                symbol_info = self.symbol_table[id]
+                t.value = {'id': id, 'symbol': symbol_info["address"], 'type': symbol_info["type"]}
             else:
-                symbol = self.get_obj_ctr(id)
-                self.symbol_table[id] = symbol
-            t.value = {'id': t.value, 'symbol': symbol}
+                # Create a new symbol and store it
+                symbol_info = self.get_obj_ctr(id)
+                self.symbol_table[id] = symbol_info
+                t.value = {'id': id, 'symbol': symbol_info["address"], 'type': 'unknown'}
         return t
-    
+        
 
     t_ignore = " \t"
 
@@ -202,9 +225,28 @@ class Lua(Parser):
         """stmt_list : stmt_list statement"""
         p[1].children = list(p[1].children) + [p[2]]
         p[0] = p[1]
-    
+
     def p_statement_assign(self, p):
         """statement : ID EQUALS expression"""
+        # Frick man, this is growing complex. Tracking each assignment at parsing is crazy smart, it just might work
+        expr_node = p[3]
+        expr_type = "unknown"
+        
+        if expr_node.name == "string":
+            expr_type = "string"
+        elif expr_node.name == "number" or expr_node.name == "float":       # merging both for now
+            expr_type = "number"
+        
+        # now update the symbol table
+        var_name = p[1]['id']
+        if var_name in self.symbol_table:
+            self.symbol_table[var_name]["type"] = expr_type
+        else:
+            symbol_info = self.get_obj_ctr(var_name, expr_type)
+            self.symbol_table[var_name] = symbol_info
+        
+        # add the type on the object ????
+        p[1]['type'] = expr_type
         p[0] = AST("assignment", value=p[1], children=[p[3]])
         
     def p_statement_print(self, p):
@@ -227,6 +269,7 @@ class Lua(Parser):
                   | expression EXP expression
         """
         p[0] = AST("binop", value=p[2], children=[p[1], p[3]])
+        p[0].type = "number"
 
     # noinspection PyMethodMayBeStatic
     # noinspection SpellCheckingInspection
@@ -244,10 +287,12 @@ class Lua(Parser):
     def p_expression_number(self, p):
         """expression : NUMBER"""
         p[0] = AST("number", value=p[1])
+        p[0].type = "number"
 
     def p_expression_string(self, p):
         """expression : STRING"""
         p[0] = AST("string", value=p[1])
+        p[0].type = "string"  # now adding types
 
     def p_expression_float(self, p):
         """expression : FLOAT"""
@@ -257,6 +302,13 @@ class Lua(Parser):
     def p_expression_ID(self, p):
         """expression : ID"""
         p[0] = AST("ID", value=p[1])
+
+        if 'id' in p[1] and p[1]['id'] in self.symbol_table:
+            p[0].type = self.symbol_table[p[1]['id']]["type"]
+        elif 'type' in p[1]:
+            p[0].type = p[1]['type']
+        else:
+            p[0].type = "unknown"
 
     # noinspection PyMethodMayBeStatic
     def p_error(self, p):
