@@ -212,7 +212,5 @@ class Emitter:
 
     def export_asm(self):
         f = open("asm_output.txt", "w")
-        print(self.asm_data_section)
-        print(self.asm_text_section)
         f.write(self.asm_data_section + "\n" + self.asm_text_section)
         f.close()
