@@ -93,7 +93,8 @@ class Lua(Parser):
     tokens = [
         'ID', 'NUMBER', 'FLOAT', 'STRING',
         'PLUS', 'MINUS', 'EXP', 'TIMES', 'DIVIDE', 'EQUALS',
-        'LPAREN', 'RPAREN'
+        'LPAREN', 'RPAREN', 'GREATER', 'LESS', 'GREATER_EQUAL', 
+        'LESS_EQUAL', 'EQUAL_EQUAL', 'NOT_EQUAL',
     ]
 
     lua_keywords = {
@@ -105,7 +106,7 @@ class Lua(Parser):
         "until": "UNTIL", "while": "WHILE", "id": "ID"
     }
 
-    lua_keywords = {"print": "PRINT", "dot": "DOT"}
+    lua_keywords = {"print": "PRINT", "dot": "DOT", "if": "IF", "then": "THEN", "else": "ELSE", "elseif": "ELSEIF", "end": "END"}
 
     tokens += [keyword for keyword in lua_keywords.values()]
 
@@ -117,11 +118,15 @@ class Lua(Parser):
     t_TIMES = r'\*'
     t_DIVIDE = r'/'
     t_EQUALS = r'='
-    # noinspection SpellCheckingInspection
     t_LPAREN = r'\('
-    # noinspection SpellCheckingInspection
     t_RPAREN = r'\)'
     t_DOT = r'\.'
+    t_GREATER = r'>'
+    t_LESS = r'<'
+    t_GREATER_EQUAL = r'>='
+    t_LESS_EQUAL = r'<='
+    t_EQUAL_EQUAL = r'=='
+    t_NOT_EQUAL = r'~='
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -138,7 +143,6 @@ class Lua(Parser):
         except ValueError:
             print("Integer value too large %s" % t.value)
             t.value = 0
-        # print "parsed number %s" % repr(t.value)
         return t
     
     def t_FLOAT(self, t):
@@ -148,7 +152,6 @@ class Lua(Parser):
         except ValueError:
             print("Float value too large %s" % t.value)
             t.value = 0
-        # print "parsed number %s" % repr(t.value)
         return t
 
     def t_ID(self, t):
@@ -157,7 +160,7 @@ class Lua(Parser):
         id = str(t.value)
         t.type = self.lua_keywords.get(id, 'ID')
         if t.type == 'ID':
-            if id in self.symbol_table:  # Note: Use id here, not t.value
+            if id in self.symbol_table:
                 symbol_info = self.symbol_table[id]
                 t.value = {'id': id, 'symbol': symbol_info["address"], 'type': symbol_info["type"]}
             else:
@@ -184,6 +187,7 @@ class Lua(Parser):
 
     # noinspection SpellCheckingInspection
     precedence = (
+        ('left', 'EQUAL_EQUAL', 'NOT_EQUAL', 'LESS', 'GREATER', 'LESS_EQUAL', 'GREATER_EQUAL'),
         ('left', 'PLUS', 'MINUS'),
         ('left', 'TIMES', 'DIVIDE'),
         ('left', 'EXP'),
@@ -311,7 +315,25 @@ class Lua(Parser):
         else:
             raise Exception("I'm not handling this yet man")
 
-    # noinspection PyMethodMayBeStatic
+    def p_expression_comparison(self, p):
+        """expression : expression GREATER expression
+                    | expression LESS expression
+                    | expression GREATER_EQUAL expression
+                    | expression LESS_EQUAL expression
+                    | expression EQUAL_EQUAL expression
+                    | expression NOT_EQUAL expression"""
+        p[0] = AST("comparison", value=p[2], children=[p[1], p[3]])
+        p[0].type = "boolean"
+    
+    def p_statement_if(self, p):
+        """statement : IF expression THEN stmt_list END
+                    | IF expression THEN stmt_list ELSE stmt_list END"""
+        if len(p) == 6:  # if-then
+            p[0] = AST("if", children=[p[2], p[4]])
+        else:  # if-then-else
+            p[0] = AST("if", children=[p[2], p[4], p[6]])
+        # todo, still need to implement if-elseif
+
     def p_error(self, p):
         if p:
             print("Syntax error at '%s'" % p.value)

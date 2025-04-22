@@ -5,6 +5,7 @@ class Emitter:
         self.ast = ast
         self.symbol_table = symbol_table
         self.string_counter = 0  # Counter for unique string labels
+        self.label_counter = 0  # For label counting
         self.string_literals = {} 
         self.asm_data_section = ".data\n"
         self.asm_text_section = ""
@@ -40,7 +41,7 @@ class Emitter:
 #               - Improved the functionality of the print case for outputting asm
 #
 #   Milestone 3: Implemented input reading in Lua syntax
-#               - Implemented basic if/else conditional blocks with integer comparisons. Uncertain of my implementation's efficacy on nested blocks, though.
+#               - Implemented basic if/else conditional blocks with integer comparisons. Uncertain of my implementation's efficacy on elseif blocks, though.
 #
 # History:
 #           2024-01-28, DMW, created
@@ -231,6 +232,69 @@ class Emitter:
                     
                     out_asm_text("pushw($t7)")
                     out_asm_text("#-- end of io.read node")
+                case "comparison":
+                    out_asm_text("# comparison node: {}".format(node.value))
+                    emit_children(node.children)  # Evaluate both sides
+                    out_asm_text("popw($t7)")  # Right operand
+                    out_asm_text("popw($t6)")  # Left operand
+                    
+                    # Generate unique label for this comparison
+                    true_label = f"true_{self.label_counter}"
+                    end_label = f"end_{self.label_counter}"
+                    self.label_counter += 1
+                    
+                    match node.value:
+                        case ">": 
+                            out_asm_text(f"bgt $t6, $t7, {true_label}")
+                        case "<": 
+                            out_asm_text(f"blt $t6, $t7, {true_label}")
+                        case ">=": 
+                            out_asm_text(f"bge $t6, $t7, {true_label}")
+                        case "<=": 
+                            out_asm_text(f"ble $t6, $t7, {true_label}")
+                        case "==": 
+                            out_asm_text(f"beq $t6, $t7, {true_label}")
+                        case "~=": 
+                            out_asm_text(f"bne $t6, $t7, {true_label}")
+                    
+                    # False case - load 0
+                    out_asm_text("li $t7, 0")
+                    out_asm_text(f"j {end_label}")
+                    
+                    # True case - load 1
+                    out_asm_text(f"{true_label}:")
+                    out_asm_text("li $t7, 1")
+                    
+                    # End of comparison
+                    out_asm_text(f"{end_label}:")
+                    out_asm_text("pushw($t7)")
+                    out_asm_text("# end of comparison node")
+
+                case "if":
+                    out_asm_text("# if statement")
+                    
+                    # create unique labels
+                    false_label = f"false_{self.label_counter}"
+                    end_label = f"end_{self.label_counter}"
+                    self.label_counter += 1
+                    
+                    # Evaluate condition
+                    emit(node.children[0])
+                    out_asm_text("popw($t7)")
+                    out_asm_text(f"beqz $t7, {false_label}")  # branching
+                    
+                    # true branch
+                    emit(node.children[1])  # Execute 'then' part
+                    out_asm_text(f"j {end_label}")
+                    
+                    # false branch
+                    out_asm_text(f"{false_label}:")
+                    if len(node.children) > 2:
+                        emit(node.children[2])
+                    
+                    # End of if statement
+                    out_asm_text(f"{end_label}:")
+                    out_asm_text("# end of if statement")
                 case _:
                     print(node.name)
                     # raise SyntaxWarning("Emitter error: AST node unknown: {}".format(node.name))
