@@ -93,7 +93,7 @@ class Lua(Parser):
     tokens = [
         'ID', 'NUMBER', 'FLOAT', 'STRING',
         'PLUS', 'MINUS', 'EXP', 'TIMES', 'DIVIDE', 'EQUALS',
-        'LPAREN', 'RPAREN',
+        'LPAREN', 'RPAREN'
     ]
 
     lua_keywords = {
@@ -105,7 +105,7 @@ class Lua(Parser):
         "until": "UNTIL", "while": "WHILE", "id": "ID"
     }
 
-    lua_keywords = {"print": "PRINT"}
+    lua_keywords = {"print": "PRINT", "dot": "DOT"}
 
     tokens += [keyword for keyword in lua_keywords.values()]
 
@@ -121,6 +121,7 @@ class Lua(Parser):
     t_LPAREN = r'\('
     # noinspection SpellCheckingInspection
     t_RPAREN = r'\)'
+    t_DOT = r'\.'
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -149,22 +150,6 @@ class Lua(Parser):
             t.value = 0
         # print "parsed number %s" % repr(t.value)
         return t
-    
-    # def t_ID(self, t):
-    #     r"""[a-zA-Z_][a-zA-Z0-9_]*"""
-    #         # if not keyword, then var ?
-    #     id = str(t.value)
-    #     t.type = self.lua_keywords.get(id, 'ID')
-    #     if t.type == 'ID':
-    #         if t.value in self.symbol_table:
-    #             symbol_info = self.symbol_table[id]
-    #             t.value = {'id': t.value, 'symbol': symbol_info["address"], 'type': symbol_info["type"]}
-    #         else:
-    #             symbol = self.get_obj_ctr(id)
-    #             self.symbol_table[id] = symbol
-    #             t.value = {'id': t.value, 'symbol': symbol_info["address"], 'type': 'unknown'}
-    #     return t
-    
 
     def t_ID(self, t):
         r"""[a-zA-Z_][a-zA-Z0-9_]*"""
@@ -253,11 +238,6 @@ class Lua(Parser):
         """statement : PRINT LPAREN expression RPAREN """
         p[0] = AST("print", value=p[1], children=[p[3]])
 
-    # # noinspection PyMethodMayBeStatic
-    # def p_statement_expr(self, p):
-    #     """statement : expression"""
-    #     AST.render_tree(p[1])
-
     # noinspection SpellCheckingInspection
     # noinspection PyMethodMayBeStatic
     def p_expression_binop(self, p):
@@ -298,7 +278,6 @@ class Lua(Parser):
         """expression : FLOAT"""
         p[0] = AST("float", value=p[1])
 
-    # i honestly don't get this?
     def p_expression_ID(self, p):
         """expression : ID"""
         p[0] = AST("ID", value=p[1])
@@ -309,6 +288,28 @@ class Lua(Parser):
             p[0].type = p[1]['type']
         else:
             p[0].type = "unknown"
+
+    def p_expression_io_read(self, p):
+        """expression : ID DOT ID LPAREN STRING RPAREN
+                    | ID DOT ID LPAREN RPAREN"""
+        
+        if p[1]['id'] == 'io' and p[3]['id'] == 'read':
+            # Check if a format was provided
+            if len(p) == 7:
+                format_str = p[5]
+                if format_str == "*n":
+                    read_type = "number"
+                elif format_str == "*l" or format_str == "*a":
+                    read_type = "string"
+                else:
+                    read_type = "string"
+            else: 
+                read_type = "string"  # Default behavior is to read a line
+            
+            p[0] = AST("io_read", value=read_type)
+            p[0].type = read_type
+        else:
+            raise Exception("I'm not handling this yet man")
 
     # noinspection PyMethodMayBeStatic
     def p_error(self, p):

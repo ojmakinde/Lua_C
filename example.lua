@@ -1,1 +1,2 @@
-print(3+3)
+guy = io.read("*n")
+print(guy + 7)

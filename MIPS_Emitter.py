@@ -38,6 +38,10 @@ class Emitter:
 #   Milestone 2: Implemented string printing.
 #               - Added the string counter
 #               - Improved the functionality of the print case for outputting asm
+#
+#   Milestone 3: Implemented input reading in Lua syntax
+#               - Implemented basic if/else conditional blocks with integer comparisons. Uncertain of my implementation's efficacy on nested blocks, though.
+#
 # History:
 #           2024-01-28, DMW, created
 
@@ -203,6 +207,30 @@ class Emitter:
                     out_asm_text("lw $t7, 0($t7)")
                     out_asm_text("pushw($t7)")
                     out_asm_text("# end of look up ID")
+                case "io_read":
+                    print(node)
+                    out_asm_text("#-- io.read node")
+                    read_type = node.value
+                    
+                    if read_type == "number":
+                        out_asm_text("#-- reading number (*n)")
+                        out_asm_text("li $v0, 5")
+                        out_asm_text("syscall")
+                        out_asm_text("move $t7, $v0")
+                    else:  # string
+                        out_asm_text("#-- reading string (*l or default)")
+                        # Allocate buffer in data section
+                        buf_label = f"buf_{len(self.string_literals)}"
+                        out_asm_data(f"{buf_label}: .space 256")  # Space for 256 chars
+                        
+                        out_asm_text(f"la $a0, {buf_label}")  # Load address of buffer
+                        out_asm_text("li $a1, 256")
+                        out_asm_text("li $v0, 8")
+                        out_asm_text("syscall")
+                        out_asm_text(f"la $t7, {buf_label}")  # Load string address to $t7
+                    
+                    out_asm_text("pushw($t7)")
+                    out_asm_text("#-- end of io.read node")
                 case _:
                     print(node.name)
                     # raise SyntaxWarning("Emitter error: AST node unknown: {}".format(node.name))
