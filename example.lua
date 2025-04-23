@@ -1,13 +1,12 @@
-a = io.read("*n")
-if a < 5 then
-    print("number is less than 5")
+a = 0
+b = 1
+count = 0
+print("Enter max fib iteration")
+max = io.read("*n")
+while count <= max do
+    print(a)
+    count = count + 1
+    temp = a + b
+    a = b
+    b = temp
 end
-if a > 7 then
-    print("number is more than 7")
-end
-if a==10 then
-    print("number is equal to 10")
-else
-    print("number is not equal to 10")
-end
-

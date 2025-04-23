@@ -295,6 +295,30 @@ class Emitter:
                     # End of if statement
                     out_asm_text(f"{end_label}:")
                     out_asm_text("# end of if statement")
+                    
+                case "while":
+                    out_asm_text("# while loop")
+                    
+                    loop_start = f"while_start_{self.label_counter}"
+                    loop_end = f"while_end_{self.label_counter}"
+                    self.label_counter += 1
+                    
+                    # loop start
+                    out_asm_text(f"{loop_start}:")
+                    
+                    # evaluation
+                    emit(node.children[0])
+                    out_asm_text("popw($t7)")  # Get condition result
+                    out_asm_text(f"beqz $t7, {loop_end}")  # Exit loop if condition is false
+                    
+                    emit(node.children[1])  # Execute loop body
+                    
+                    # goto start
+                    out_asm_text(f"j {loop_start}")
+                    
+                    # end
+                    out_asm_text(f"{loop_end}:")
+                    out_asm_text("# end of while loop")
                 case _:
                     print(node.name)
                     # raise SyntaxWarning("Emitter error: AST node unknown: {}".format(node.name))

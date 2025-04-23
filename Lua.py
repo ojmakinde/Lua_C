@@ -106,7 +106,8 @@ class Lua(Parser):
         "until": "UNTIL", "while": "WHILE", "id": "ID"
     }
 
-    lua_keywords = {"print": "PRINT", "dot": "DOT", "if": "IF", "then": "THEN", "else": "ELSE", "elseif": "ELSEIF", "end": "END"}
+    lua_keywords = {"print": "PRINT", "dot": "DOT", "if": "IF", "then": "THEN", "do": "DO", 
+                    "else": "ELSE", "elseif": "ELSEIF", "end": "END", "while": "WHILE"}
 
     tokens += [keyword for keyword in lua_keywords.values()]
 
@@ -333,6 +334,10 @@ class Lua(Parser):
         else:  # if-then-else
             p[0] = AST("if", children=[p[2], p[4], p[6]])
         # todo, still need to implement if-elseif
+    
+    def p_statement_while(self, p):
+        """statement : WHILE expression DO stmt_list END"""
+        p[0] = AST("while", children=[p[2], p[4]])
 
     def p_error(self, p):
         if p:
