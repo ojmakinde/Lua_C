@@ -43,6 +43,8 @@ class Emitter:
 #   Milestone 3: Implemented input reading in Lua syntax
 #               - Implemented basic if/else conditional blocks with integer comparisons. Uncertain of my implementation's efficacy on elseif blocks, though.
 #
+#
+#   Milestone 4: Implemented while loops and Fibonacci sequence.
 # History:
 #           2024-01-28, DMW, created
 
